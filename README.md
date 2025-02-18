@@ -55,5 +55,5 @@ pip install requests
 This project is licensed under the MIT License.
 
 ## Author
-[Nikunj Vashishta]
+Nikunj Vashishta
 
