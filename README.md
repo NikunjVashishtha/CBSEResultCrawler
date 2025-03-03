@@ -50,6 +50,7 @@ pip install requests
 - Use responsibly and do not overload CBSE servers.
 - Results are checked for validity before saving.
 - If a result is already present in the `Results/` directory, it will be skipped.
+- Replace school code and roll no. range accordingly.
 
 ## License
 This project is licensed under the MIT License.
