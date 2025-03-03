@@ -17,10 +17,10 @@ headers = {
 fc = 1
 for fn in "ASDBMNGUIOLPE":
     for mn in "ASDBMNGUIOLPE":
-        for rno in range(21634926, 21635326):
+        for rno in range(xxxx4926, xxxx5326):
             payload = {
                 "regno": rno,
-                "sch": "60182",
+                "sch": "xxxxx",
                 "admid": f"{fn}{mn}{str(rno)[5:7]}6010",
                 "B2": "Submit",
                 "as_sfid": "AAAAAAW2KHzrqU6ovtFyNJfql3blC6L0ci1MGbdufq2S-nfJrzWEvZdZPO_fqcL-1UP1EqzQgQhMlng5yzmD1s0e7Ph5x4oHzIBBwp27HTNVXzafIOKgpUdMzXD2zeO4ywfgDqw%3D",
