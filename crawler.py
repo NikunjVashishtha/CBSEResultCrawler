@@ -1,8 +1,8 @@
 import requests
-import re
-import glob
-from optparse import OptionParser
 import os
+import argparse
+from time import sleep
+
 if not os.path.exists("Results"):
     os.makedirs("Results")
 
@@ -19,7 +19,6 @@ class color:
     END = "\033[0m"
     WHITE = "\33[37m"
 
-
 session = requests.Session()
 artwork = (
     color.BOLD
@@ -31,25 +30,38 @@ ______                _ _     _____                    _
 |    // _ \\/ __| | | | | __| | |   | '__/ _` \\ \\ /\\ / / |/ _ \\ '__|
 | |\\ \\  __/\\__ \\ |_| | | |_  | \\__/\\ | | (_| |\\ V  V /| |  __/ |   
 \\_| \\_\\___||___/\\__,_|_|\\__|  \\____/_|  \\__,_| \\_/\\_/ |_|\\___|_|  
-{0} Disclaimer - Made by students for fun, not to hurt anyone's privacy.
-{0} This is not a hacking tool.
-{0} You might have to wait for results, the program tells you when it finds one.
+{0} Disclaimer - This tool is developed for educational and research purposes only.
+{0} It is not intended to compromise privacy or security.
+{0} Please use responsibly and respect all applicable laws and regulations.
 """.format(
         color.BLUE
     )
 )
 print(artwork)
-parser = OptionParser()
 
-parser.add_option("-s", "--start", dest="start", help="the starting roll no.")
-parser.add_option("-e", "--end", dest="end", help="the ending roll no.")
-parser.add_option("-c", "--code", dest="sklcode", help="School Code")
-parser.add_option("-n", "--center", dest="centNo", help="Center code")
-(c_options, args) = parser.parse_args()
-start = c_options.start
-end = c_options.end
-sklcode = c_options.sklcode
-centNo = c_options.centNo
+def parse_args():
+    parser = argparse.ArgumentParser(description="CBSE Result Crawler")
+    parser.add_argument("-s", "--start", type=int, help="Starting roll number")
+    parser.add_argument("-e", "--end", type=int, help="Ending roll number (exclusive)")
+    parser.add_argument("-c", "--code", dest="sklcode", help="School Code")
+    parser.add_argument("-n", "--center", dest="centNo", help="Center code")
+    parser.add_argument("--admid-pattern", type=str, default="{prefix1}{prefix2}{rno_suffix}{sklcode_prefix}{centno_suffix}",
+                        help="Pattern for admid (default: '{prefix1}{prefix2}{rno_suffix}{sklcode_prefix}{centno_suffix}')")
+    parser.add_argument("--prefix1", type=str, default="ABCDEFGHIJKLMNOPQRSTUVWXYZ", help="First prefix set for admid")
+    parser.add_argument("--prefix2", type=str, default="ABCDEFGHIJKLMNOPQRSTUVWXYZ", help="Second prefix set for admid")
+    parser.add_argument("--delay", type=float, default=0.5, help="Delay between requests (seconds)")
+    parser.add_argument("--extra-fields", nargs='*', default=[], help="Extra POST fields as key=value")
+    args = parser.parse_args()
+    return args
+
+def wizard():
+    print(color.YELLOW + "[*] Interactive mode" + color.END)
+    start = int(input(color.GREEN + "[~] " + color.WHITE + "Start value: "))
+    end = int(input(color.GREEN + "[~] " + color.WHITE + "Stop value: "))
+    sklcode = input(color.GREEN + "[~] " + color.WHITE + "School code: ")
+    centNo = input(color.GREEN + "[~] " + color.WHITE + "Center code: ")
+    return start, end, sklcode, centNo
+
 headers = {
     "Host": "testservices.nic.in",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0",
@@ -57,113 +69,81 @@ headers = {
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://testservices.nic.in/",
-    "Content-Length": "0",
     "Origin": "https://testservices.nic.in",
     "DNT": "1",
 }
-aph = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-pv1 = "AAAAAAW2KHzrqU6ovtFyNJfql3blC6L0ci1MGbdufq2S-nfJrzWEvZdZPO_fqcL-1UP1EqzQgQhMlng5yzmD1s0e7Ph5x4oHzIBBwp27HTNVXzafIOKgpUdMzXD2zeO4ywfgDqw%3D"
-pv2 = "f914448d28d08fb83ead1c1ced699372b7de6e51"
-pv3 = "AAAAAAWOyNUww0f-KakO_D4QDHBUxRfRXmfJXY1fn-E3GwOJz5qWbdvtHCjR1-mWMG4nr_ETJs3rHSuMrJbTuZbIZAvYvzlJsMVvNytSnM_HG8m2mHzaZMgOw26b-KF-KHymO-0%3D"
-pv4 = "218520f49f375ef87e6d64848742f8d82195e9f7"
 
-fn = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+def parse_extra_fields(extra_fields):
+    result = {}
+    for item in extra_fields:
+        if '=' in item:
+            k, v = item.split('=', 1)
+            result[k] = v
+    return result
 
-i = 0
+def req(rno, sklcode, centNo, admid_pattern, prefix1, prefix2, extra_fields):
+    found = False
+    for i in prefix1:
+        for j in prefix2:
+            admid = admid_pattern.format(
+                prefix1=i,
+                prefix2=j,
+                rno_suffix=str(rno)[-2:],
+                sklcode_prefix=sklcode[:2],
+                centno_suffix=centNo[-2:]
+            )
+            payload = {
+                "regno": rno,
+                "sch": sklcode,
+                "admid": admid,
+                "B2": "Submit",
+            }
+            payload.update(extra_fields)
+            try:
+                q = session.post(
+                    "https://testservices.nic.in/cbseresults/class_xii_a_2024/ClassTwelfth_c_2024.asp",
+                    data=payload,
+                    headers=headers,
+                    timeout=10
+                )
+            except requests.RequestException as ex:
+                print(f"{color.RED}[!] Network error for {rno}: {ex}{color.END}")
+                return False
 
+            if "Result Not Found" not in q.text:
+                with open(f"Results/{rno}.htm", "w", encoding="utf-8") as f:
+                    f.write(q.text)
+                print(f"{color.GREEN}Found: {color.WHITE}[{rno}]{color.END}")
+                found = True
+                break
+        if found:
+            break
+    if not found:
+        print(f"{color.YELLOW}Not found: {rno}{color.END}")
+    return found
 
-def wizard():
-    global start, end, sklcode, centNo
-    try:
-        request = requests.get(
-            "https://testservices.nic.in/cbseresults/class_xii_a_2024/ClassTwelfth_c_2024.asp"
-        )
-        if request.status_code == 200:
-            print(f"{color.GREEN}[OK] {color.WHITE}")
-    except requests.ConnectTimeout:
-        print(
-            color.RED
-            + "[X]"
-            + color.YELLOW
-            + "\n[!] "
-            + color.WHITE
-            + "Connection timed out"
-        )
-        exit(1)
-    except KeyboardInterrupt:
-        print(color.RED + "[!] " + color.WHITE + "Exited upon user request...")
-        exit()
-    except:
-        print(color.RED + "[X]" + color.WHITE)
-        print(
-            color.RED
-            + "[!]"
-            + color.WHITE
-            + " Website could not be located make sure to use http / https"
-        )
-        exit()
+def main():
+    args = parse_args()
+    if not (args.start and args.end and args.sklcode and args.centNo):
+        args.start, args.end, args.sklcode, args.centNo = wizard()
 
-    start = input(color.GREEN + "[~] " + color.WHITE + "Start value: ")
-    end = input(color.GREEN + "[~] " + color.WHITE + "Stop value: ")
-    sklcode = input(
-        color.GREEN + "[~] " + color.WHITE + "School code: "
-    )
-    centNo = input(
-        color.GREEN + "[~] " + color.WHITE + "Center code: "
-    )
+    extra_fields = parse_extra_fields(args.extra_fields)
+    total = args.end - args.start
+    found_count = 0
+    for idx, rno in enumerate(range(args.start, args.end), 1):
+        result_file = f"Results/{rno}.htm"
+        if os.path.exists(result_file):
+            print(f"{color.CYAN}{rno} already in list{color.END}")
+            continue
+        print(f"{color.BLUE}[{idx}/{total}] Checking roll {rno}...{color.END}")
+        if req(
+            rno, args.sklcode, args.centNo,
+            args.admid_pattern, args.prefix1, args.prefix2, extra_fields
+        ):
+            found_count += 1
+        sleep(args.delay)  # Be polite to the server
 
+    print(f"{color.BOLD}{color.GREEN}Done. Found {found_count} results out of {total}.{color.END}")
 
-def req(rno):
-    global pv1, pv2, pv3, pv4, fn, i
-
-    if i > 25:
-        i == 0
-    fc = 0
-
-    for mn in aph:
-        payload = {
-            "regno": rno,
-            "sch": sklcode,
-            "admid": f"{fn[i]}{mn}{str(rno)[5:7]}{sklcode[0:2]}{centNo[2:4]}",
-            "B2": "Submit",
-            "as_sfid": pv1,
-            "as_fid": pv2,
-            "as_sfid": pv3,
-            "as_fid": pv4,
-        }
-        q = session.post(
-            "https://testservices.nic.in/cbseresults/class_xii_a_2024/ClassTwelfth_c_2024.asp",
-            data=payload,
-            headers=headers,
-        )
-
-        m = re.search("Result Not Found", q.text)
-        if m == None:
-            f = open(f"Results/{rno}.htm", "w")
-            f.write(q.text)
-            f.close()
-            print(f"{color.GREEN}Found: {color.WHITE}[{rno}]")
-        else:
-            fc += 1
-        if i > 25:
-            i == 0
-        if fc == 26:
-            i += 1
-            req(rno)
-
-
-if c_options.start == None:
-    if c_options.end == None:
-        if c_options.sklcode == None:
-            if c_options.centNo == None:
-                try:
-                    wizard()
-                except KeyboardInterrupt:
-                    print(f"{color.RED}\n[#] {color.WHITE}Exited upon user request...")
-                    exit()
-
-for rno in range(int(start), int(end)):
-    if f"Results/{rno}.htm" in [f for f in glob.glob("Results/*.htm")]:
-        print(f"{rno} already in list")
-        continue
-    req(rno)
+if __name__ == "__main__":
+    main()
