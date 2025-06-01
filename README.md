@@ -29,8 +29,8 @@ pip install requests
 ## Usage
 1. Clone this repository:
    ```sh
-   git clone https://github.com/yourusername/result-crawler.git
-   cd result-crawler
+   git clone https://github.com/NikunjVashishtha/CBSEResultCrawler.git
+   cd CBSEResultCrawler
    ```
 2. Run the script using command-line options:
    ```sh
